@@ -1,0 +1,285 @@
+/* ==========================================================================
+   Roster — morphing backgrounds, game sections, character specimens
+   ========================================================================== */
+
+/* --------------------------------------------------- morphing backgrounds */
+/* One fixed layer per game. Opacity is driven by scroll progress in
+   js/backgrounds.js so consecutive games genuinely cross-dissolve.
+   Each backdrop is pushed under heavy blur and a colour grade — the source
+   screenshots are busy, and the page needs flat readable colour fields. */
+.bgstack{position:fixed;inset:0;z-index:0;background:var(--ink)}
+
+.bglayer{
+  position:absolute;inset:0;
+  opacity:0;
+  will-change:opacity;
+}
+.bglayer::before{
+  content:'';position:absolute;inset:-8%;
+  background-image:var(--src);
+  background-size:cover;
+  background-position:center;
+  filter:blur(46px) saturate(.55) brightness(.42);
+  transform:scale(1.14);
+}
+.bglayer::after{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 100% 74% at 76% 42%, var(--glow) 0%, transparent 62%),
+    linear-gradient(to right, rgba(13,10,8,.94) 12%, rgba(13,10,8,.62) 55%, rgba(13,10,8,.8));
+}
+
+/* ------------------------------------------------------------ page rhythm */
+main{position:relative;z-index:2;padding-top:var(--hud-h)}
+
+.roster{display:flow-root}
+
+/* ----------------------------------------------------------- game section */
+.game{
+  padding:clamp(4rem,10vw,9rem) 0 clamp(2rem,6vw,5rem);
+  scroll-margin-top:var(--hud-h);
+}
+
+.game__intro{
+  padding:0 var(--gutter);
+  margin-bottom:clamp(2.5rem,6vw,5rem);
+  max-width:60rem;
+}
+
+.game__index{
+  display:flex;align-items:center;gap:.9rem;
+  font-family:var(--mono);
+  font-size:.6875rem;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--accent);
+  margin-bottom:1rem;
+  transition:color .6s var(--ease);
+}
+.game__index::after{
+  content:'';flex:1;height:1px;max-width:9rem;
+  background:linear-gradient(to right, currentColor, transparent);
+  opacity:.5;
+}
+
+.game__title{
+  font-size:clamp(2.6rem,8vw,6.2rem);
+  text-transform:uppercase;
+  line-height:.86;
+  margin-bottom:.9rem;
+  text-wrap:balance;
+}
+.game__title span{color:var(--accent);transition:color .6s var(--ease)}
+
+.game__meta{
+  font-family:var(--mono);
+  font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:1.1rem;
+}
+
+.game__blurb{
+  max-width:var(--measure);
+  color:var(--paper-dim);
+  font-size:1.0625rem;
+}
+
+/* ------------------------------------------------------ character specimen */
+/* Brief calls for the copy centred and the render on the right. The left rail
+   carries the taxonomy, which keeps the description column at a readable
+   measure instead of stretching it across the viewport. */
+.spec{
+  display:grid;
+  grid-template-columns:12rem minmax(0,var(--measure)) minmax(0,1fr);
+  align-items:center;
+  gap:clamp(1.5rem,4vw,3.5rem);
+  padding:clamp(2.5rem,5vw,4rem) var(--gutter);
+  border-top:1px solid rgba(242,236,226,.07);
+  /* so #anchor links and scrollIntoView clear the fixed HUD */
+  scroll-margin-top:calc(var(--hud-h) + 1.5rem);
+}
+
+/* ---- rail ---- */
+.spec__rail{
+  display:flex;flex-direction:column;gap:.5rem;
+  font-family:var(--mono);
+  font-size:.625rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);
+  align-self:start;
+  padding-top:.5rem;
+}
+.spec__tag{
+  align-self:start;
+  padding:.22rem .5rem;
+  color:var(--accent);
+  border:1px solid currentColor;
+  border-radius:999px;
+  transition:color .6s var(--ease);
+}
+.spec__debut{color:var(--muted);line-height:1.5;letter-spacing:.08em}
+
+/* ---- copy ---- */
+.spec__name{
+  font-size:clamp(2.1rem,5.5vw,3.6rem);
+  text-transform:uppercase;
+  line-height:.9;
+  margin-bottom:.3rem;
+}
+.spec__tagline{
+  font-family:var(--mono);
+  font-size:.75rem;letter-spacing:.06em;
+  color:var(--accent);
+  margin-bottom:1rem;
+  transition:color .6s var(--ease);
+}
+.spec__body{color:var(--paper-dim);margin-bottom:1.25rem}
+
+.spec__trivia{
+  display:flex;flex-direction:column;gap:.4rem;
+  border-left:1px solid rgba(242,236,226,.14);
+  padding-left:1rem;
+}
+.spec__trivia li{
+  font-size:.8125rem;
+  color:var(--muted);
+  line-height:1.55;
+}
+
+/* ---- render ---- */
+/* The 3D effect is two stacked techniques:
+   1. layered filter: drop-shadow — unlike box-shadow it follows the PNG's
+      alpha silhouette, so the character reads as cut out of the page rather
+      than as a shadowed rectangle;
+   2. a mouse-tracked tilt on the frame with the image pushed forward in Z,
+      so it physically protrudes as the card turns. */
+.spec__figure{
+  position:relative;
+  display:grid;place-items:center;
+  perspective:1100px;
+  min-height:clamp(300px,34vw,480px);
+}
+
+.spec__plate{
+  position:relative;
+  transform-style:preserve-3d;
+  transition:transform .35s var(--ease);
+  will-change:transform;
+}
+
+/* pool of light on the "floor" behind the specimen, sells the cut-out */
+.spec__plate::before{
+  content:'';position:absolute;
+  left:50%;bottom:2%;
+  width:78%;height:16%;
+  transform:translate(-50%,0) translateZ(-40px);
+  background:radial-gradient(ellipse at center, var(--glow) 0%, transparent 70%);
+  opacity:.85;
+}
+
+.spec__img{
+  position:relative;
+  max-height:clamp(290px,33vw,470px);
+  width:auto;
+  transform:translateZ(58px);
+  filter:
+    drop-shadow(0 4px 6px rgba(0,0,0,.55))
+    drop-shadow(0 16px 26px rgba(0,0,0,.6))
+    drop-shadow(0 42px 60px rgba(0,0,0,.72));
+  transition:filter .35s var(--ease);
+}
+.spec__figure:hover .spec__img{
+  filter:
+    drop-shadow(0 6px 8px rgba(0,0,0,.6))
+    drop-shadow(0 22px 34px rgba(0,0,0,.65))
+    drop-shadow(0 60px 82px rgba(0,0,0,.8))
+    drop-shadow(0 0 34px var(--glow));
+}
+
+/* ---- reveal ---- */
+.spec, .game__intro{opacity:0}
+.is-revealed{opacity:1}
+
+/* ---- search highlight ---- */
+.spec.is-target{animation:target-pulse 1.5s var(--ease)}
+@keyframes target-pulse{
+  0%,100%{background:transparent}
+  18%    {background:rgba(242,236,226,.07)}
+}
+.spec.is-target .spec__name{animation:target-name 1.5s var(--ease)}
+@keyframes target-name{
+  0%,100%{color:var(--paper)}
+  18%    {color:var(--accent)}
+}
+
+/* ---- filtering ---- */
+.spec.is-filtered{display:none}
+
+/* ------------------------------------------------------------- no results */
+.noresults{
+  padding:6rem var(--gutter);
+  text-align:center;
+  font-family:var(--mono);
+  font-size:.875rem;
+  color:var(--muted);
+}
+.noresults__reset{
+  display:block;margin:1rem auto 0;
+  color:var(--accent);
+  border-bottom:1px solid currentColor;
+  font-family:var(--mono);font-size:.8125rem;
+}
+
+/* -------------------------------------------------------------- colophon */
+.colophon{
+  position:relative;
+  margin-top:6rem;
+  padding:clamp(3rem,7vw,5.5rem) var(--gutter) 4rem;
+  border-top:1px solid rgba(242,236,226,.1);
+  background:rgba(13,10,8,.75);
+}
+.colophon__grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));
+  gap:2.5rem;
+  max-width:74rem;
+}
+.colophon__title{
+  font-size:2rem;text-transform:uppercase;margin-bottom:.6rem;
+}
+.colophon__head{
+  font-family:var(--mono);font-size:.625rem;font-weight:400;
+  letter-spacing:.18em;text-transform:uppercase;
+  color:var(--accent);
+  margin-bottom:.7rem;
+}
+.colophon p{font-size:.8125rem;color:var(--muted);line-height:1.7}
+.colophon a{color:var(--paper-dim)}
+
+/* ------------------------------------------------------------- responsive */
+@media (max-width:1080px){
+  .spec{
+    grid-template-columns:9rem minmax(0,1fr) minmax(0,20rem);
+    gap:1.75rem;
+  }
+}
+
+@media (max-width:820px){
+  .spec{
+    grid-template-columns:1fr;
+    grid-template-areas:'rail' 'fig' 'copy';
+    gap:1.5rem;
+    text-align:left;
+  }
+  .spec__rail{grid-area:rail;flex-direction:row;align-items:center;gap:.75rem;padding-top:0}
+  .spec__figure{grid-area:fig;min-height:0;perspective:none}
+  .spec__copy{grid-area:copy}
+  .spec__img{max-height:min(46vh,300px);transform:none}
+  .spec__plate{transform:none !important}
+  .spec__debut{letter-spacing:.06em}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .spec, .game__intro{opacity:1}
+  .spec__plate{transform:none !important}
+  .spec.is-target,
+  .spec.is-target .spec__name{animation:none}
+  .spec.is-target{outline:2px solid var(--accent);outline-offset:-2px}
+}

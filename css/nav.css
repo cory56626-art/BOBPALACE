@@ -1,0 +1,246 @@
+/* ==========================================================================
+   HUD — wordmark, search, filters — and the night clock
+   ========================================================================== */
+
+.hud{
+  position:fixed;top:0;left:0;right:0;z-index:60;
+  background:linear-gradient(to bottom, rgba(13,10,8,.94), rgba(13,10,8,.78) 70%, rgba(13,10,8,0));
+  backdrop-filter:blur(14px) saturate(1.2);
+  -webkit-backdrop-filter:blur(14px) saturate(1.2);
+  border-bottom:1px solid rgba(242,236,226,.07);
+  transform:translateY(-110%);
+  transition:transform .5s var(--ease);
+}
+.hud.is-in{transform:none}
+
+.hud__bar{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:clamp(.75rem,2.5vw,2rem);
+  padding:.85rem var(--gutter) .55rem;
+}
+
+/* --------------------------------------------------------------- wordmark */
+.wordmark{
+  font-family:var(--display);
+  font-weight:800;
+  font-size:1.6rem;
+  line-height:1;
+  letter-spacing:-.01em;
+  text-transform:uppercase;
+  text-decoration:none;
+  color:var(--paper);
+  white-space:nowrap;
+}
+.wordmark__sub{color:var(--accent);transition:color .6s var(--ease)}
+
+/* ----------------------------------------------------------------- search */
+.finder{position:relative;justify-self:center;width:min(30rem,100%)}
+
+.finder__field{
+  display:flex;align-items:center;gap:.6rem;
+  padding:.5rem .75rem;
+  background:rgba(242,236,226,.05);
+  border:1px solid rgba(242,236,226,.13);
+  border-radius:2px;
+  transition:border-color .2s, background .2s;
+}
+.finder__field:focus-within{
+  border-color:var(--accent);
+  background:rgba(242,236,226,.08);
+}
+
+.finder__icon{
+  width:16px;height:16px;flex:none;
+  fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;
+}
+
+.finder__input{
+  flex:1;min-width:0;
+  background:none;border:0;outline:0;
+  font-family:var(--mono);font-size:.8125rem;letter-spacing:.01em;
+}
+.finder__input::placeholder{color:var(--muted)}
+.finder__input::-webkit-search-cancel-button{display:none}
+
+.finder__clear{
+  flex:none;width:20px;height:20px;line-height:1;
+  font-size:1.15rem;color:var(--muted);
+  border-radius:50%;
+}
+.finder__clear:hover{color:var(--paper)}
+
+/* results dropdown */
+.finder__results{
+  position:absolute;top:calc(100% + .4rem);left:0;right:0;z-index:5;
+  max-height:min(52vh,26rem);overflow-y:auto;
+  background:#120e0b;
+  border:1px solid rgba(242,236,226,.13);
+  border-radius:2px;
+  box-shadow:0 24px 50px rgba(0,0,0,.6);
+}
+.finder__result{
+  display:grid;grid-template-columns:34px 1fr auto;
+  align-items:center;gap:.7rem;
+  width:100%;padding:.5rem .7rem;
+  text-align:left;
+  border-bottom:1px solid rgba(242,236,226,.05);
+}
+.finder__result:last-child{border-bottom:0}
+.finder__result:hover,
+.finder__result.is-active{background:rgba(242,236,226,.07)}
+
+.finder__thumb{
+  width:34px;height:34px;object-fit:contain;
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));
+}
+.finder__name{font-size:.875rem;font-weight:500}
+.finder__meta{
+  font-family:var(--mono);font-size:.625rem;
+  letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);white-space:nowrap;
+}
+
+/* --------------------------------------------------------- music notes */
+/* Spawned per keystroke, removed on animationend — see js/search.js */
+.notes{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.note{
+  position:absolute;bottom:6px;
+  font-size:1rem;line-height:1;
+  color:var(--accent);
+  will-change:transform,opacity;
+  animation:note-rise 1.25s var(--ease) forwards;
+}
+@keyframes note-rise{
+  0%  {opacity:0; transform:translate(0,0) rotate(0deg) scale(.6)}
+  15% {opacity:1}
+  100%{opacity:0; transform:translate(var(--dx),-72px) rotate(var(--rot)) scale(1.15)}
+}
+
+/* ------------------------------------------------------------- mute button */
+.hud__mute{
+  display:flex;align-items:center;gap:.5rem;
+  font-family:var(--mono);font-size:.6875rem;
+  letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);
+  white-space:nowrap;
+  transition:color .2s;
+}
+.hud__mute:hover{color:var(--paper)}
+.hud__mute-icon{
+  width:9px;height:9px;border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 10px var(--accent);
+  transition:background .2s, box-shadow .2s;
+}
+.hud__mute[aria-pressed="true"] .hud__mute-icon{
+  background:var(--muted);box-shadow:none;
+}
+
+/* ---------------------------------------------------------------- filters */
+.filters{
+  display:flex;align-items:center;flex-wrap:wrap;
+  gap:.4rem;
+  padding:0 var(--gutter) .7rem;
+}
+.filters__group{display:flex;flex-wrap:wrap;gap:.4rem}
+.filters__rule{
+  width:1px;height:18px;margin:0 .5rem;
+  background:rgba(242,236,226,.16);
+}
+
+.chip{
+  font-family:var(--mono);
+  font-size:.6875rem;letter-spacing:.08em;text-transform:uppercase;
+  padding:.34rem .7rem;
+  color:var(--paper-dim);
+  border:1px solid rgba(242,236,226,.16);
+  border-radius:999px;
+  white-space:nowrap;
+  transition:color .2s, border-color .2s, background .2s;
+}
+.chip:hover{color:var(--paper);border-color:rgba(242,236,226,.4)}
+.chip[aria-pressed="true"]{
+  color:var(--ink);
+  background:var(--chip-accent,var(--accent));
+  border-color:var(--chip-accent,var(--accent));
+  font-weight:500;
+}
+.chip__count{opacity:.55;margin-left:.3rem}
+
+/* --------------------------------------------------------- the night clock */
+/* Signature element. The hour advances 12 AM -> 6 AM across each game section,
+   so it reports real scroll position in the franchise's own units. */
+.nightclock{
+  position:fixed;left:var(--gutter);bottom:1.15rem;z-index:55;
+  display:flex;flex-direction:column;gap:.4rem;
+  font-family:var(--mono);
+  opacity:0;transform:translateY(12px);
+  transition:opacity .5s var(--ease), transform .5s var(--ease);
+  pointer-events:none;
+}
+.nightclock.is-in{opacity:1;transform:none}
+
+.nightclock__row{display:flex;align-items:baseline;gap:.65rem}
+.nightclock__game{
+  font-size:.625rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--muted);
+}
+.nightclock__time{
+  font-size:1.1rem;font-weight:500;
+  letter-spacing:.02em;
+  color:var(--accent);
+  font-variant-numeric:tabular-nums;
+  transition:color .6s var(--ease);
+}
+
+.nightclock__power{display:flex;align-items:center;gap:.5rem}
+.nightclock__label{
+  font-size:.5625rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);
+}
+.nightclock__meter{
+  width:82px;height:7px;
+  border:1px solid rgba(242,236,226,.28);
+  padding:1px;
+}
+.nightclock__meter i{
+  display:block;height:100%;width:100%;
+  background:var(--accent);
+  transform-origin:left;
+  transition:background .6s var(--ease);
+}
+
+/* ------------------------------------------------------------- responsive */
+@media (max-width:900px){
+  /* --hud-h is measured in js/main.js; nothing here should hard-code it */
+  .hud__bar{
+    grid-template-columns:auto auto;
+    grid-template-areas:'mark mute' 'find find';
+    row-gap:.6rem;
+  }
+  .wordmark{grid-area:mark}
+  .hud__mute{grid-area:mute;justify-self:end}
+  .finder{grid-area:find;width:100%}
+
+  /* One horizontally-scrollable strip rather than a wall of wrapped chips —
+     the groups must stop wrapping too, or they just stack inside the strip. */
+  .filters{
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+    padding-right:1rem;
+  }
+  .filters::-webkit-scrollbar{display:none}
+  .filters__group{flex-wrap:nowrap}
+  .chip{flex:none}
+  .filters__rule{flex:none}
+
+  .nightclock{display:none}
+}
+
+@media (max-width:520px){
+  .hud__mute-label{display:none}
+}

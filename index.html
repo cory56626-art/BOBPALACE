@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FNAF-Verse — Every animatronic, Nights 1 through 4</title>
+<meta name="description" content="An interactive catalogue of every animatronic from Five Nights at Freddy's 1 to 4. Browse by game and type, search the roster, and read what each one actually does.">
+<meta name="theme-color" content="#0d0a08">
+<link rel="icon" href="assets/img/scenes/fnaf1-poster.webp">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/nav.css">
+<link rel="stylesheet" href="css/landing.css">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body class="is-locked">
+
+<a class="skip-link" href="#roster">Skip to the roster</a>
+
+<!-- ══════════════════════════════════════════════ landing / intro sequence -->
+<div class="landing" id="landing">
+  <div class="landing__scene" id="landingScene">
+    <img class="landing__office" src="assets/img/scenes/fnaf1-office.webp" alt="" aria-hidden="true">
+    <div class="landing__vignette" aria-hidden="true"></div>
+  </div>
+
+  <div class="landing__inner">
+    <p class="landing__eyebrow">Fazbear Entertainment · Personnel Orientation</p>
+    <h1 class="landing__title">Welcome to the <em>FNAF-Verse!</em></h1>
+    <p class="landing__lede">
+      Forty-three animatronics across four nights of the franchise, catalogued end to end.
+    </p>
+
+    <div class="poster" id="poster">
+      <img class="poster__img" src="assets/img/scenes/fnaf1-poster.webp"
+           alt="The Celebrate! poster from the Freddy Fazbear's Pizza office, showing Bonnie, Freddy and Chica on stage.">
+      <!-- hitbox sits on Freddy's nose; percentages so it tracks the poster at any size -->
+      <button class="poster__nose" id="noseButton" type="button"
+              aria-describedby="noseHint">
+        <span class="visually-hidden">Boop Freddy's nose to enter the site</span>
+      </button>
+      <span class="poster__ring" aria-hidden="true"></span>
+    </div>
+
+    <p class="landing__hint" id="noseHint">
+      <span class="landing__hint-key">Boop Freddy's nose</span>
+      <span class="landing__hint-warn">Fair warning: it screams.</span>
+    </p>
+
+    <button class="landing__skip" id="skipIntro" type="button">
+      Enter quietly — no jumpscare
+    </button>
+  </div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════ the jumpscare -->
+<div class="jumpscare" id="jumpscare" aria-hidden="true">
+  <img class="jumpscare__img" id="jumpscareImg" alt="" src="" width="480" height="270">
+</div>
+<div class="flash" id="flash" aria-hidden="true"></div>
+
+<!-- ════════════════════════════════════════════ morphing background stack -->
+<div class="bgstack" id="bgstack" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ══════════════════════════════════════════════════════════════ the HUD -->
+<header class="hud" id="hud">
+  <div class="hud__bar">
+    <a class="wordmark" href="#roster">
+      <span class="wordmark__main">FNAF</span><span class="wordmark__sub">-VERSE</span>
+    </a>
+
+    <div class="finder">
+      <div class="finder__field">
+        <svg class="finder__icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
+        <input class="finder__input" id="search" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Search the roster — try “Mangle”" aria-label="Search animatronics"
+               role="combobox" aria-expanded="false" aria-controls="searchResults" aria-autocomplete="list">
+        <button class="finder__clear" id="searchClear" type="button" hidden>
+          <span class="visually-hidden">Clear search</span>&times;
+        </button>
+      </div>
+      <ul class="finder__results" id="searchResults" role="listbox" aria-label="Search results" hidden></ul>
+      <div class="notes" id="notes" aria-hidden="true"></div>
+    </div>
+
+    <button class="hud__mute" id="muteToggle" type="button" aria-pressed="false">
+      <span class="hud__mute-icon" aria-hidden="true"></span>
+      <span class="hud__mute-label">Sound on</span>
+    </button>
+  </div>
+
+  <nav class="filters" aria-label="Filter the roster">
+    <div class="filters__group" id="gameFilters" role="group" aria-label="Filter by game"></div>
+    <div class="filters__rule" aria-hidden="true"></div>
+    <div class="filters__group filters__group--type" id="typeFilters" role="group" aria-label="Filter by type"></div>
+  </nav>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════════ content -->
+<main id="roster" tabindex="-1">
+  <div class="roster" id="rosterMount"></div>
+
+  <p class="noresults" id="noResults" hidden>
+    Nothing in the roster matches that.
+    <button type="button" class="noresults__reset" id="resetFilters">Show all 43</button>
+  </p>
+
+  <footer class="colophon">
+    <div class="colophon__grid">
+      <div>
+        <h2 class="colophon__title">FNAF-Verse</h2>
+        <p>
+          A non-commercial fan catalogue of the animatronics from
+          <i>Five Nights at Freddy's</i> 1&ndash;4.
+        </p>
+      </div>
+      <div>
+        <h3 class="colophon__head">Credits</h3>
+        <p>
+          <i>Five Nights at Freddy's</i> and all characters are the property of
+          Scott Cawthon and Steel Wool Studios. Character renders, backdrops and
+          audio are sourced from the
+          <a href="https://freddy-fazbears-pizza.fandom.com/" rel="noopener">FNAF Wiki</a>
+          and are used here for reference only.
+        </p>
+      </div>
+      <div>
+        <h3 class="colophon__head">Built with</h3>
+        <p>
+          Hand-written HTML, CSS and JavaScript. GSAP ScrollTrigger for the scroll
+          choreography, Lenis for smooth scrolling. No build step, no tracking,
+          every asset served locally.
+        </p>
+      </div>
+    </div>
+  </footer>
+</main>
+
+<!-- ═══════════════════════════════════════════════════════ night-clock HUD -->
+<div class="nightclock" id="nightclock" aria-hidden="true">
+  <div class="nightclock__row">
+    <span class="nightclock__game" id="nightGame">Night 1</span>
+    <span class="nightclock__time" id="nightTime">12 AM</span>
+  </div>
+  <div class="nightclock__power">
+    <span class="nightclock__label">Power left</span>
+    <div class="nightclock__meter"><i id="powerFill"></i></div>
+  </div>
+</div>
+
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/ScrollTrigger.min.js"></script>
+<script src="vendor/lenis.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
