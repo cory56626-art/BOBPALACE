@@ -1,7 +1,4 @@
 node_modules/
+package-lock.json
+_shot.mjs
 .DS_Store
-*.log
-
-# Playwright verification output (not part of the site)
-tests/screenshots/
-test-results/

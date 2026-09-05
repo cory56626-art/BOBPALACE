@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, claude/website-creation-2oodhn]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -10,7 +10,6 @@ permissions:
   pages: write
   id-token: write
 
-# Let a running deploy finish rather than cancelling it mid-publish.
 concurrency:
   group: pages
   cancel-in-progress: false
@@ -23,14 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # The site is plain static files with the assets committed alongside
-      # them, so there is nothing to build — the repo root is the artifact.
       - uses: actions/configure-pages@v5
-
+      # Plain static files with no build step: the repo root is the artifact.
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
-
       - id: deployment
         uses: actions/deploy-pages@v4
