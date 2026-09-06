@@ -4,5 +4,8 @@
   "private": true,
   "type": "module",
   "description": "From-scratch 2D ragdoll physics: capsule collision, sequential impulses, torque-limited muscles.",
-  "scripts": { "start": "python3 -m http.server 8000" }
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node tests/invariants.mjs && node tests/metrics.mjs"
+  }
 }
