@@ -18,9 +18,9 @@ export const FIXED_DT = 1 / 200;
 // objective of "stays upright and actually tracks the requested speed"; the
 // controller structure is principled, these numbers are not.
 export const GAIT = {
-  dK: 0.08,       // how far ahead of the feet the balance point is biased, per m/s
+  dK: 0.13,       // how far ahead of the feet the balance point is biased, per m/s
   capK: 1.05,      // capture-point gain in foot placement
-  vK: 0.30,        // speed error fed back into step length
+  vK: 0.20,        // speed error fed back into step length
   leanK: 0.12,     // torso lean per m/s of speed error
   leanV: 0.075,    // torso lean per m/s of target speed
   stepTrig: 0.055, // capture-point excursion that triggers a step, metres
@@ -31,6 +31,25 @@ export const GAIT = {
   landBack: 0.45,  // furthest the swing foot may land behind the COM
 };
 globalThis.GAIT = GAIT;
+
+// Get-up constants. Same story as the gait table: the structure is
+// principled, these numbers came out of a direct search against "does it
+// actually stand back up".
+export const GETUP = {
+  legPull: 0.95,  // how far each leg aims from its own hip towards the COM
+  armPull: 0.0,   // arms brace straight down from the shoulder
+  gain: 4.0,
+  sway: 0.22,     // slow scrabble amplitude, metres
+  targetY: 0.02,  // aim height; below zero presses into the floor
+  // Handoff between getting up and standing. Deliberately asymmetric: quick
+  // to hand control to the balance controller, slow to take it back.
+  upExit: 0.28,   // uprightness at which the balance controller takes over
+  comExit: 0.30,  // ... and how high the COM must be, as a fraction of leg
+  upEnter: 0.25,  // uprightness below which the unit counts as down
+  fallDwell: 0.04,
+  spineGain: 2.2,
+};
+globalThis.GETUP = GETUP;
 
 // Damage is impulse scaled by how fast the two surfaces were closing, with a
 // speed threshold below which nothing is injured. Thresholding on *speed*
@@ -56,7 +75,7 @@ export class Arena {
       friction: 1,
       damage: 1,
       lethal: true,
-      getupStrength: 3.0,
+      getupStrength: 5.0,
     };
     this.elapsed = 0;
     this.over = false;

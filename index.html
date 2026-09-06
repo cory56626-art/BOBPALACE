@@ -115,14 +115,22 @@
     and only one arrives fast. A chimp's overhead smash hurts because
     250&nbsp;N&middot;m of shoulder moved a real arm into a real head.</p>
 
-    <h3>What it does badly</h3>
-    <p>Getting up off the floor is genuinely hard and this controller is not
-    good at it. A downed unit sits up, rolls to all fours and scrambles, and
-    often fails — humans more than chimps, whose proportions suit it. The
-    <em>get-up strength</em> slider multiplies the torque ceiling while a unit
-    is down; it is the one assist in here, it is a multiplier on muscle rather
-    than an external force, and you can set it to 1&times; and watch them
-    flounder.</p>
+    <h3>Getting up</h3>
+    <p>A downed unit aims every limb at the floor <em>beneath its own centre
+    of mass</em> and its torso at the sky. That is the entire get-up
+    controller — one pose, no stages, no clock.</p>
+    <p>Both details are load-bearing. Aiming in world space rather than in
+    joint angles means "point your shin at the ground" survives being in a
+    tangle, where "flex the hip 1.8 radians" points the leg wherever the
+    pelvis happens to be lying. And aiming inwards rather than straight down
+    gathers the limbs under the load before pressing; straight down makes a
+    splayed body push at its extremities and lever itself onto its head.</p>
+    <p>Chimpanzees get up from about 90% of knockdowns, humans from about 60%
+    — long legs and a high centre of mass are a real handicap here, which is
+    roughly the honest answer. The <em>get-up strength</em> slider raises the
+    torque ceiling while a unit is down. It is the one assist in here, it is a
+    multiplier on muscle rather than an external force, and at 1&times; you
+    can watch an unassisted human fail most of the time.</p>
   </article>
 
   <footer>

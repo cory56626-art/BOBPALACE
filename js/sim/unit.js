@@ -165,6 +165,9 @@ export class Unit {
       this.legL1 = hipY - kneeY;
       this.legL2 = kneeY;
       this.legLength = hipY;
+      const shY = spec.joints.find((j) => j.n === 'shoulder.l').at[1] * scale;
+      const elY = spec.joints.find((j) => j.n === 'elbow.l').at[1] * scale;
+      this.armL1 = shY - elY;
     }
 
     this.root = this.bodies.pelvis;
@@ -244,6 +247,9 @@ export class Unit {
       j.mode = 'off';
       j.maxTorque = 0;
       j.kp = 0; j.kd = 0;
+      // Zero the readings in the same breath, so a unit killed mid-step is
+      // never briefly reported as producing torque it no longer has.
+      j.Pm = 0; j.lastTorque = 0; j.strain = 0; j.muscleActive = false;
     }
     for (const b of this.list) { b.angularDamping = 0.5; b.linearDamping = 0.05; }
     this.releaseGrips();
@@ -252,6 +258,17 @@ export class Unit {
   releaseGrips() {
     for (const g of this.grips) this.world.removeJoint(g);
     this.grips.length = 0;
+  }
+
+  /**
+   * The get-up boost, sanitised. A NaN reaching the joint's torque ceiling
+   * does not merely misbehave, it removes the ceiling entirely -- clamping
+   * against NaN bounds is a no-op -- so the one guarantee this whole
+   * simulation rests on has to be defended from arithmetic, not just from
+   * bad intentions.
+   */
+  get torqueBoost() {
+    return Number.isFinite(this.boost) ? clamp(this.boost, 0, 12) : 1;
   }
 
   /** Fraction of full muscle authority available right now. */
@@ -277,7 +294,7 @@ export class Unit {
     const tone = this.tone();
     j.kp = j.baseKp * gain * tone;
     j.kd = j.baseKd * Math.sqrt(gain) * tone;
-    j.maxTorque = j.peakTorque * torqueFrac * tone * this.boost;
+    j.maxTorque = j.peakTorque * torqueFrac * tone * this.torqueBoost;
   }
 
   /** Drive a limb towards an absolute world orientation. */
@@ -289,7 +306,7 @@ export class Unit {
     const tone = this.tone();
     j.kp = j.baseKp * gain * tone;
     j.kd = j.baseKd * Math.sqrt(gain) * tone;
-    j.maxTorque = j.peakTorque * torqueFrac * tone * this.boost;
+    j.maxTorque = j.peakTorque * torqueFrac * tone * this.torqueBoost;
   }
 
   /** Drive a joint to a raw relative angle (used by the leg IK). */
@@ -301,7 +318,7 @@ export class Unit {
     const tone = this.tone();
     j.kp = j.baseKp * gain * tone;
     j.kd = j.baseKd * Math.sqrt(gain) * tone;
-    j.maxTorque = j.peakTorque * torqueFrac * tone * this.boost;
+    j.maxTorque = j.peakTorque * torqueFrac * tone * this.torqueBoost;
   }
 
   setTorque(name, torque, torqueFrac = 1) {

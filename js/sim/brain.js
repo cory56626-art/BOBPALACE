@@ -32,6 +32,8 @@ export class Brain {
     this.action = null;
     this.getupPhase = 0;
     this.downTime = 0;
+    this.fallenTime = 0;
+    this.getupStrength = opts.getupStrength ?? 2.6;
     this.unit.boost = 1;
     this.state = 'stand';
     this.desiredVel = 0;
@@ -65,7 +67,19 @@ export class Brain {
     // far better rise-from-squat than anything the getup sequence can do.
     const headLow = u.head.pos.y < u.spec.height * 0.36 * u.scale;
 
-    if (up < 0.45 || headLow || (!grounded && u.com().y < u.legLength * 0.5)) {
+    // Hysteresis on the handoff, and the asymmetry matters. Be quick to hand
+    // control to the balance controller and slow to take it back: the get-up
+    // pose has no balance law in it, so any dwell spent there while the unit
+    // is actually standing just topples it again. Being slow to give up stops
+    // the pair swapping several times a second, which is what a fit is.
+    const H = globalThis.GETUP;
+    const upright = up > H.upExit && !headLow && grounded
+      && u.com().y > u.legLength * H.comExit;
+    const flat = up < H.upEnter || headLow || (!grounded && u.com().y < u.legLength * 0.5);
+    this.fallenTime = flat ? this.fallenTime + dt : 0;
+    const fallen = upright ? false : (this.fallenTime > H.fallDwell || this.state === 'down');
+
+    if (fallen) {
       this.state = 'down';
       this.downTime += dt;
       this.pickTarget(ctx);
@@ -107,7 +121,9 @@ export class Brain {
         want = gap > 0.15 ? dir * 0.5 : 0;
       } else if (gap > 0.05) {
         this.state = 'advance';
-        want = dir * clamp(0.75 + gap * 0.55, 0.5, 1.35) * u.spec.stats.agility;
+        // Below about 1 m/s the gait produces almost no travel, so a slower
+        // "approach" is really just standing still looking keen.
+        want = dir * clamp(1.0 + gap * 0.5, 1.0, 1.6) * u.spec.stats.agility;
       } else {
         this.state = 'engage';
         want = 0;
@@ -389,105 +405,90 @@ export class Brain {
   }
 
   /**
+   * Point one limb at a spot on the ground, in world space.
+   *
+   * The proximal segment aims from its own joint at the target; the distal
+   * segment aims at the same target from wherever that puts the middle joint.
+   * The limb therefore straightens when the target is far and folds when it
+   * is close, with no explicit stages -- which is the whole trick. A limb
+   * splayed out across the floor gathers itself underneath the body, and a
+   * limb already underneath presses down. Same instruction, both jobs.
+   */
+  aimLimb(prox, dist, L1, target, gain = 2.0) {
+    const u = this.unit;
+    const j = u.joints[prox];
+    const p = j.a.localToWorld(j.anchorLocal);
+    const dir = Math.atan2(target.y - p.y, target.x - p.x);
+    u.setWorldAngle(prox, dir, gain, 1);
+    const mx = p.x + Math.cos(dir) * L1, my = p.y + Math.sin(dir) * L1;
+    u.setWorldAngle(dist, Math.atan2(target.y - my, target.x - mx), gain, 1);
+  }
+
+  /**
    * Getting up.
    *
-   * The obvious version -- reach both feet to the floor and push -- fails
-   * from flat on your back: the hip cannot bend that far, the target sits
-   * past the joint limit, and the muscle saturates doing nothing. Sitting up
-   * first fails differently, and more insidiously; the unit ends up parked in
-   * a seated crouch with its hip already at maximum flexion and no
-   * quasi-static path left that gets the centre of mass over its feet.
+   * Every limb is aimed at the floor underneath the centre of mass, and the
+   * torso at the sky. That is the whole controller -- no stages, no clock.
    *
-   * So the route is through all fours -- the one shape reachable from prone
-   * AND from seated, and the only one a body can actually push up out of.
-   * Hands planted, knees tucked, torso horizontal, then bring a foot under
-   * and stand. Every stage is chosen by what the body is doing right now, not
-   * by an animation clock, so a chimp landing on you mid-sequence knocks you
-   * back a stage. It fails plenty. That is not a bug in the controller; it is
-   * what a torque budget feels like from the inside.
+   * The previous version drove joint-*relative* targets through a little
+   * stage machine, and both halves were wrong. Relative targets are
+   * meaningless from a tangle: "flex the hip 1.8 rad" points the thigh
+   * wherever the pelvis happens to be lying, which from flat on your back is
+   * nowhere useful. And the stage machine had no hysteresis, so it flipped
+   * between contradictory poses dozens of times a second and the unit
+   * convulsed instead of standing.
+   *
+   * Aiming at the centre of mass rather than straight down matters too.
+   * Straight down makes a splayed-out body push at its extremities, which
+   * levers it over onto its head; aiming inwards gathers the limbs under the
+   * load first and only then presses. There is nothing left to flicker
+   * between, so there are no seizures.
    */
   getup(dt) {
     const u = this.unit;
-    u.boost = this.getupStrength;
     const f = u.facing;
-    const com = u.com();
-    const upright = u.uprightness();
+    u.boost = this.getupStrength;
     this.getupPhase += dt;
+    this.stage = 'getup';
 
-    const hipPos = u.joints['hip.l'].a.localToWorld(u.joints['hip.l'].anchorLocal);
-    const handY = Math.min(u.bodies['hand.l'].pos.y, u.bodies['hand.r'].pos.y);
-    const onAllFours = hipPos.y > u.legLength * 0.40
-                    && handY < 0.30 * u.scale
-                    && Math.abs(com.x - hipPos.x) < 0.5 * u.scale;
+    const com = u.com();
+    // Which way the torso is lying. Arms brace on the head side, legs on the
+    // other, so the body ends up spanning its own centre of mass.
+    // A slow scrabble, out of phase between the limbs: fast enough to break a
+    // symmetric deadlock, slow enough to read as effort rather than a fit.
+    const beat = Math.sin(this.getupPhase * 3.6);
+    const flat = f > 0 ? 0 : Math.PI;
 
-    u.setWorldAngle('neck', UP - 0.8 * f, 1.2, 1);
+    u.setWorldAngle('spine', UP, globalThis.GETUP.spineGain, 1);
+    u.setWorldAngle('neck', UP, 1.4, 1);
 
-    if (upright < 0.30 && handY > 0.30 * u.scale) {
-      // --- sit up ----------------------------------------------------------
-      // Flat on your back you cannot reach all fours in one move. Legs
-      // straight out along the floor, then crunch the torso up against them.
-      // Tucking the knees first feels more natural and is exactly wrong: with
-      // nothing anchoring the pelvis the body pikes the other way -- legs in
-      // the air, chest still on the ground -- and folds itself in half
-      // forever.
-      this.stage = 'situp';
-      const beat = Math.sin(this.getupPhase * 5.5) * 0.12;
-      u.setWorldAngle('spine', UP - 0.25 * f, 2.6, 1);
-      for (const s of ['l', 'r']) {
-        const jitter = (s === 'l' ? beat : -beat);
-        u.setFlex(`hip.${s}`, 0.05 + jitter, 2.4, 1);
-        u.setFlex(`knee.${s}`, 0.10 + jitter, 2.4, 1);
-        u.setFlex(`ankle.${s}`, 0.20, 1.8, 1);
-        u.setFlex(`shoulder.${s}`, -1.20, 2.2, 1);
-        u.setFlex(`elbow.${s}`, 0.30, 2.2, 1);
-        u.setFlex(`wrist.${s}`, 0.10, 1.2, 1);
-      }
-      return;
-    }
-
-    if (!onAllFours) {
-      this.stage = 'quad';
-      // Torso horizontal, arms straight down in front, knees under the hips.
-      u.setWorldAngle('spine', UP - 1.15 * f, 2.6, 1);
-      for (const s of ['l', 'r']) {
-        u.setFlex(`hip.${s}`, 1.80, 2.6, 1);
-        u.setFlex(`knee.${s}`, 2.20, 2.6, 1);
-        u.setFlex(`ankle.${s}`, -0.50, 2.2, 1);
-        // Aim the upper arms straight down in world space: whatever the
-        // torso happens to be doing, "put your hands on the floor" is a
-        // world-frame instruction.
-        u.setWorldAngle(`shoulder.${s}`, DOWN + 0.30 * f, 2.6, 1);
-        u.setFlex(`elbow.${s}`, 0.08, 2.6, 1);
-        u.setFlex(`wrist.${s}`, 0.0, 1.4, 1);
-      }
-      // Crawl: alternate limbs and drag along the floor towards the target.
-      if (this.target) {
-        const dir = Math.sign(this.target.com().x - com.x) || 1;
-        const ph = this.getupPhase * 5.0;
-        for (const s of ['l', 'r']) {
-          const k = s === 'l' ? 1 : -1;
-          u.setWorldAngle(`shoulder.${s}`, DOWN + Math.sin(ph + (k > 0 ? 0 : Math.PI)) * 0.55 * dir, 2.4, 1);
-          u.setWorldAngle(`hip.${s}`, DOWN + Math.sin(ph + (k > 0 ? Math.PI : 0)) * 0.45 * dir, 2.4, 1);
-        }
-      }
-      this.pelvisDrive(UP - 1.15 * f);
-      return;
-    }
-
-    this.stage = 'rise';
-    const lead = this.swing;
-    const trail = lead === 'l' ? 'r' : 'l';
-    this.aimFoot(lead, { x: com.x + 0.10 * f, y: 0.02 }, 2.4, 1);
-    u.setFlex(`ankle.${lead}`, 0.12, 2.2, 1);
-    u.setFlex(`hip.${trail}`, 1.10, 2.4, 1);
-    u.setFlex(`knee.${trail}`, 1.65, 2.4, 1);
-    u.setFlex(`ankle.${trail}`, -0.30, 2.0, 1);
+    const G = globalThis.GETUP;
     for (const s of ['l', 'r']) {
-      u.setFlex(`shoulder.${s}`, 1.05, 2.2, 1);
-      u.setFlex(`elbow.${s}`, 0.15, 2.2, 1);
+      const k = s === 'l' ? 1 : -1;
+      const sway = beat * k * G.sway;
+      // Each limb aims at a spot on the floor between its own joint and the
+      // body's centre of mass. Aiming straight down makes a splayed body
+      // push at its extremities and lever itself onto its head; aiming at a
+      // fixed point near the COM folds the arms back underneath the torso.
+      // Pulling part-way from the joint towards the COM does neither.
+      const leg = u.joints[`hip.${s}`];
+      const lp = leg.a.localToWorld(leg.anchorLocal);
+      this.aimLimb(`hip.${s}`, `knee.${s}`, u.legL1,
+        { x: mix(lp.x, com.x, G.legPull) + sway, y: G.targetY }, G.gain);
+      const arm = u.joints[`shoulder.${s}`];
+      const ap = arm.a.localToWorld(arm.anchorLocal);
+      this.aimLimb(`shoulder.${s}`, `elbow.${s}`, u.armL1,
+        { x: mix(ap.x, com.x, G.armPull) - sway, y: G.targetY }, G.gain);
+      u.setWorldAngle(`ankle.${s}`, flat, 1.6, 1);
+      u.setWorldAngle(`wrist.${s}`, flat, 1.2, 1);
     }
-    u.setWorldAngle('spine', UP - 0.60 * f, 2.4, 1);
-    this.pelvisDrive(UP - 0.45 * f);
+
+    // Once anything below the hips is carrying load there is a strut to the
+    // floor, and the pelvis can be steered the way a standing unit steers it:
+    // by pushing down through a leg.
+    const loaded = ['l', 'r'].some((s) =>
+      u.footContact(s) || u.bodies[`shin.${s}`].contactImpulse > 0);
+    if (loaded) this.pelvisDrive(UP);
   }
 
   // ---- attacks -----------------------------------------------------------

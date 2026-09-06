@@ -60,14 +60,34 @@ the solver applied and scales them by closing speed, with a speed threshold
 below which nothing is injured — that threshold is what separates a footfall
 from a faceplant, since both carry a large impulse and only one arrives fast.
 
-## Known weakness
+**Getting up.** A downed unit aims every limb at the floor *beneath its own
+centre of mass* and its torso at the sky. One pose, no stages, no clock.
 
-Getting up off the floor is hard and this controller is not good at it. A
-downed unit sits up, rolls towards all fours and scrambles, and often fails;
-humans fail more than chimpanzees, whose proportions suit the manoeuvre. The
-**get-up strength** slider multiplies the torque ceiling while a unit is down.
-It is the only assist in the project, it is a multiplier on muscle rather than
-an external force, and setting it to 1× shows you the unassisted truth.
+Both details earn their place. World-frame aiming means "point your shin at
+the ground" still means something from inside a tangle, where a joint-relative
+"flex the hip 1.8 rad" points the leg wherever the pelvis happens to be lying.
+Aiming inwards rather than straight down gathers the limbs under the load
+before pressing — straight down makes a splayed body push at its extremities
+and lever itself onto its head. And having no stages at all is what stops the
+controller flickering between contradictory poses, which is what a seizure is.
+
+Chimpanzees recover from ~90% of knockdowns, humans from ~60%; long legs and a
+high centre of mass are a genuine handicap. The **get-up strength** slider
+raises the torque ceiling while a unit is down — the only assist in the
+project, a multiplier on muscle rather than an external force. At 1× you can
+watch an unassisted human fail most of the time.
+
+## Tests
+
+```sh
+node tests/invariants.mjs   # guarantees: torque ceilings, finiteness, rest
+node tests/metrics.mjs      # behaviour: recovery, walking, fight outcomes
+```
+
+`invariants.mjs` is the one that matters. It asserts that no muscle ever
+exceeds its own torque ceiling in any state — the claim the whole simulation
+rests on. It caught a real bug: a `NaN` reaching the ceiling silently removed
+it altogether, because clamping against `NaN` bounds is a no-op.
 
 ## Running it
 

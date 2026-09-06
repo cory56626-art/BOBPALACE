@@ -80,7 +80,8 @@ export class Revolute {
   applyMuscle() {
     if (this.broken || !this.enabled) return;
     if (this.mode !== 'torque') return;
-    const t = clamp(this.cmdTorque, -this.maxTorque, this.maxTorque);
+    const cap = this.maxTorque > 0 ? this.maxTorque : 0;
+    const t = clamp(this.cmdTorque, -cap, cap) || 0;
     this.lastTorque = t;
     this.strain = this.maxTorque > 0 ? Math.abs(t) / this.maxTorque : 0;
     this.b.torque += t;
@@ -89,8 +90,15 @@ export class Revolute {
 
   preStepMuscle(dt, invDt) {
     this.muscleActive = false;
-    if (this.broken || !this.enabled) return;
-    if (this.mode !== 'servo' && this.mode !== 'servoWorld') { this.Pm = 0; return; }
+    if (this.broken || !this.enabled) { this.lastTorque = 0; this.strain = 0; return; }
+    if (this.mode !== 'servo' && this.mode !== 'servoWorld') {
+      this.Pm = 0;
+      // A muscle that is not driving reports zero, rather than whatever it
+      // happened to be doing last. Otherwise a limp ragdoll keeps claiming
+      // torque it is not producing, in the readouts and in the tests.
+      if (this.mode === 'off') { this.lastTorque = 0; this.strain = 0; }
+      return;
+    }
     const a = this.a, b = this.b;
     const iA = a.invInertia, iB = b.invInertia;
 
@@ -107,7 +115,9 @@ export class Revolute {
     // parent, which is exactly how SIMBICON steers a swing leg.
     const denom = (world ? iB : iA + iB) + this.gammaM;
     this.massM = denom > 0 ? 1 / denom : 0;
-    this.maxPm = this.maxTorque * dt;
+    // Fail limp, never fail unlimited: a non-finite ceiling must produce
+    // no torque at all rather than clamping against NaN, which does nothing.
+    this.maxPm = this.maxTorque > 0 ? this.maxTorque * dt : 0;
     this.worldM = world;
     this.muscleActive = true;
 

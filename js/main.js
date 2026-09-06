@@ -34,7 +34,7 @@ const SLIDERS = [
     apply: (v) => { arena.config.strength = v; }, restart: true },
   { key: 'damage', label: 'Damage', min: 0, max: 3, step: 0.05, value: 1, unit: '×',
     apply: (v) => { arena.config.damage = v; } },
-  { key: 'getupStrength', label: 'Get-up strength', min: 1, max: 6, step: 0.1, value: 3, unit: '×',
+  { key: 'getupStrength', label: 'Get-up strength', min: 1, max: 8, step: 0.1, value: 5, unit: '×',
     apply: (v) => {
       arena.config.getupStrength = v;
       for (const u of arena.units) if (u.brain) u.brain.getupStrength = v;
@@ -199,11 +199,17 @@ let acc = 0, last = performance.now(), fps = 60, steps = 0;
 let startTeamHp = null;
 
 function teamHp() {
-  const t = [{ hp: 0, max: 0, alive: 0, n: 0 }, { hp: 0, max: 0, alive: 0, n: 0 }];
+  const blank = () => ({ hp: 0, max: 0, alive: 0, up: 0, n: 0 });
+  const t = [blank(), blank()];
   for (const u of arena.units) {
-    const s = t[u.team] || (t[u.team] = { hp: 0, max: 0, alive: 0, n: 0 });
+    const s = t[u.team] || (t[u.team] = blank());
     s.hp += u.hp; s.max += u.maxHp; s.n++;
-    if (u.alive) s.alive++;
+    if (u.alive) {
+      s.alive++;
+      // Actually on its feet, not merely alive. The two are very different
+      // in a ragdoll brawl and conflating them made the readout a liar.
+      if (u.brain && u.brain.state !== 'down' && u.uprightness() > 0.5) s.up++;
+    }
   }
   return t;
 }
@@ -237,8 +243,9 @@ function updateHud() {
   for (const i of [0, 1]) {
     const s = t[i] || { hp: 0, max: 1, alive: 0, n: 0 };
     document.getElementById(`hp${i}`).style.width = `${(100 * s.hp / Math.max(1, s.max)).toFixed(1)}%`;
+    const down = s.alive - s.up;
     document.getElementById(`sub${i}`).textContent =
-      `${s.alive}/${s.n} standing · ${Math.round(s.hp)} hp`;
+      `${s.alive}/${s.n} alive · ${down ? `${down} down · ` : ''}${Math.round(s.hp)} hp`;
   }
   document.getElementById('clock').textContent = `${arena.elapsed.toFixed(1)}s`;
 
